@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Advanced Coin Toss Game</title>
+
+  <style>
+    :root {
+      --bg-light: #f0f0f5;
+      --bg-dark: #1e1e1e;
+      --text-light: #222;
+      --text-dark: #f2f2f2;
+      --card-light: white;
+      --card-dark: #2c2c2c;
+      --primary: #28a745;
+      --danger: #dc3545;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background: var(--bg-light);
+      color: var(--text-light);
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    body.dark {
+      background: var(--bg-dark);
+      color: var(--text-dark);
+    }
+
+    .game-container {
+      background: var(--card-light);
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 100%;
+      transition: background 0.3s;
+    }
+
+    body.dark .game-container {
+      background: var(--card-dark);
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    .coin {
+      margin: 20px auto;
+      width: 150px;
+      height: 150px;
+    }
+
+    .coin-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .heads, .tails {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background-size: cover;
+      background-position: center;
+      display: none;
+    }
+
+    .heads {
+      background-image: url('https://pngimg.com/uploads/coin/coin_PNG36869.png');
+    }
+
+    .tails {
+      background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/10cent_2006rev.png/240px-10cent_2006rev.png');
+    }
+
+    button {
+      margin: 10px 5px;
+      padding: 10px 16px;
+      font-size: 14px;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .btn-toss { background: var(--primary); }
+    .btn-reset { background: var(--danger); }
+    .btn-toggle { background: #343a40; }
+    .btn-export, .btn-share { background: #007bff; }
+
+    .result {
+      font-size: 20px;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .scoreboard {
+      text-align: center;
+      font-size: 16px;
+    }
+
+    .history {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 15px;
+      font-size: 14px;
+    }
+
+    .history-item {
+      border-bottom: 1px solid #ccc;
+      padding: 5px 0;
+    }
+
+    @media (max-width: 480px) {
+      .coin {
+        width: 100px;
+        height: 100px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-container">
+    <h1>🪙 Advanced Coin Toss Game</h1>
+
+    <!-- Coin Image -->
+    <div class="coin" onclick="tossCoin()">
+      <div class="coin-inner" id="coinInner">
+        <div class="heads" id="heads"></div>
+        <div class="tails" id="tails"></div>
+      </div>
+    </div>
+
+    <div class="result" id="resultText">Click the coin or Toss button!</div>
+
+    <div class="scoreboard">
+      Heads: <strong id="headsCount">0</strong> |
+      Tails: <strong id="tailsCount">0</strong>
+    </div>
+
+    <div class="history" id="historyList"></div>
+
+    <!-- Buttons -->
+    <div style="text-align:center; margin-top: 15px;">
+      <button class="btn-toss" onclick="tossCoin()">Toss</button>
+      <button class="btn-reset" onclick="resetGame()">Reset</button>
+      <button class="btn-toggle" onclick="toggleDarkMode()">🌗</button>
+      <button class="btn-export" onclick="exportToCSV()">📥 Excel</button>
+      <button class="btn-export" onclick="exportToPDF()">📄 PDF</button>
+      <button class="btn-share" onclick="shareWhatsApp()">📲 Share</button>
+    </div>
+  </div>
+
+  <!-- Audio Effects -->
+  <audio id="flipSound" src="https://www.soundjay.com/button/sounds/button-16.mp3" preload="auto"></audio>
+  <audio id="dingSound" src="https://www.soundjay.com/button/sounds/button-3.mp3" preload="auto"></audio>
+
+  <!-- jsPDF Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script>
+    const headsCount = document.getElementById('headsCount');
+    const tailsCount = document.getElementById('tailsCount');
+    const resultText = document.getElementById('resultText');
+    const historyList = document.getElementById('historyList');
+    const coinInner = document.getElementById('coinInner');
+    const headsSide = document.getElementById('heads');
+    const tailsSide = document.getElementById('tails');
+    const flipSound = document.getElementById('flipSound');
+    const dingSound = document.getElementById('dingSound');
+
+    let heads = 0, tails = 0;
+    let historyData = [];
+
+    function tossCoin() {
+      headsSide.style.display = tailsSide.style.display = "none";
+      flipSound.play();
+
+      setTimeout(() => {
+        const isHead = Math.random() < 0.5;
+        const result = isHead ? "HEADS" : "TAILS";
+        const time = new Date().toLocaleTimeString();
+
+        if (isHead) {
+          heads++;
+          headsCount.textContent = heads;
+          headsSide.style.display = "block";
+        } else {
+          tails++;
+          tailsCount.textContent = tails;
+          tailsSide.style.display = "block";
+        }
+
+        resultText.textContent = `🪙 It's ${result}!`;
+        historyData.unshift({ result, time });
+        updateHistory();
+        dingSound.play();
+        saveToLocalStorage();
+      }, 300);
+    }
+
+    function resetGame() {
+      heads = tails = 0;
+      historyData = [];
+      headsCount.textContent = tailsCount.textContent = 0;
+      resultText.textContent = "Click the coin or Toss button!";
+      headsSide.style.display = tailsSide.style.display = "none";
+      updateHistory();
+      saveToLocalStorage();
+    }
+
+    function updateHistory() {
+      historyList.innerHTML = "";
+      historyData.forEach(entry => {
+        const div = document.createElement("div");
+        div.className = "history-item";
+        div.textContent = `${entry.time}: ${entry.result}`;
+        historyList.appendChild(div);
+      });
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark");
+    }
+
+    function exportToCSV() {
+      let csv = "Time,Result\n";
+      historyData.forEach(entry => {
+        csv += `${entry.time},${entry.result}\n`;
+      });
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "coin-toss-history.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function exportToPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text("🪙 Coin Toss History", 20, 20);
+      doc.setFontSize(12);
+      historyData.forEach((entry, i) => {
+        doc.text(`${entry.time}: ${entry.result}`, 20, 30 + i * 8);
+      });
+
+      doc.save("coin-toss-history.pdf");
+    }
+
+    function shareWhatsApp() {
+      if (historyData.length === 0) {
+        alert("No toss result to share!");
+        return;
+      }
+      const latest = historyData[0];
+      const msg = `🪙 Coin Toss Result: ${latest.result} at ${latest.time}`;
+      const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+      window.open(url, "_blank");
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem("coinHistory", JSON.stringify(historyData));
+    }
+
+    function loadFromLocalStorage() {
+      const data = localStorage.getItem("coinHistory");
+      if (data) {
+        historyData = JSON.parse(data);
+        historyData.forEach(entry => {
+          if (entry.result === "HEADS") heads++;
+          else tails++;
+        });
+        headsCount.textContent = heads;
+        tailsCount.textContent = tails;
+        updateHistory();
+      }
+    }
+
+    loadFromLocalStorage();
+  </script>
+</body>
+</html>
